@@ -313,7 +313,9 @@ impl TestOpts {
 pub type OptRes = Result<TestOpts, String>;
 
 fn optgroups() -> Vec<getopts::OptGroup> {
-    vec!(getopts::optflag("", "ignored", "Run ignored tests"),
+    vec!(
+      getopts::optflag("", "all", "Run all tests"),
+      getopts::optflag("", "ignored", "Run ignored tests"),
       getopts::optflag("", "test", "Run tests and not benchmarks"),
       getopts::optflag("", "bench", "Run benchmarks instead of tests"),
       getopts::optflag("h", "help", "Display this message (longer with --help)"),
@@ -938,16 +940,15 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
 
     // Maybe pull out the ignored test and unignore them
     filtered = if opts.run_all {
-        fn filter(test: testdescandfn) -> option<testdescandfn> {
-                let testdescandfn {desc, testfn} = test;
-                some(testdescandfn {
-                    desc: testdesc {ignore: false, ..desc},
-                    testfn: testfn
-                })
+        fn filter(test: TestDescAndFn) -> Option<TestDescAndFn> {
+            let TestDescAndFn {desc, testfn} = test;
+            Some(TestDescAndFn {
+                desc: TestDesc {ignore: false, ..desc},
+                testfn: testfn
+            })
         }
         filtered.into_iter().filter_map(filter).collect()
-    }
-    else if opts.run_ignored {
+    } else if opts.run_ignored {
         fn filter(test: TestDescAndFn) -> Option<TestDescAndFn> {
             if test.desc.ignore {
                 let TestDescAndFn {desc, testfn} = test;
