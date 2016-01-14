@@ -284,6 +284,7 @@ pub enum ColorConfig {
 
 pub struct TestOpts {
     pub filter: Option<String>,
+    pub run_all: bool,
     pub run_ignored: bool,
     pub run_tests: bool,
     pub bench_benchmarks: bool,
@@ -297,6 +298,7 @@ impl TestOpts {
     fn new() -> TestOpts {
         TestOpts {
             filter: None,
+            run_all: false,
             run_ignored: false,
             run_tests: false,
             bench_benchmarks: false,
@@ -373,6 +375,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         None
     };
 
+    let run_all = matches.opt_present("all");
     let run_ignored = matches.opt_present("ignored");
 
     let logfile = matches.opt_str("logfile");
@@ -399,6 +402,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
 
     let test_opts = TestOpts {
         filter: filter,
+        run_all: run_all,
         run_ignored: run_ignored,
         run_tests: run_tests,
         bench_benchmarks: bench_benchmarks,
@@ -933,9 +937,17 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
     };
 
     // Maybe pull out the ignored test and unignore them
-    filtered = if !opts.run_ignored {
-        filtered
-    } else {
+    filtered = if opts.run_all {
+        fn filter(test: testdescandfn) -> option<testdescandfn> {
+                let testdescandfn {desc, testfn} = test;
+                some(testdescandfn {
+                    desc: testdesc {ignore: false, ..desc},
+                    testfn: testfn
+                })
+        }
+        filtered.into_iter().filter_map(filter).collect()
+    }
+    else if opts.run_ignored {
         fn filter(test: TestDescAndFn) -> Option<TestDescAndFn> {
             if test.desc.ignore {
                 let TestDescAndFn {desc, testfn} = test;
@@ -948,6 +960,8 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
             }
         }
         filtered.into_iter().filter_map(filter).collect()
+    } else {
+        filtered
     };
 
     // Sort the tests alphabetically
